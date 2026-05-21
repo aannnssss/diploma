@@ -1,0 +1,9 @@
+services:
+  analysis-app:
+    build: .
+    container_name: social_network_analyzer
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./data:/app/data
+    restart: always

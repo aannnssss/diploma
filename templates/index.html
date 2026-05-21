@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ устойчивости сетей</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Анализ устойчивости социальных сетей</h1>
+        </header>
+        
+        <div class="panel">
+            <h2>1. Загрузка социальной сети</h2>
+            
+            <div id="graphInfo" class="info-box">
+                Выберите граф для анализа
+            </div>
+
+            <div class="form-group">
+                <label><strong>Демо-графы:</strong> Модель Барабаши-Альберт, N=100</label>
+                <div class="demo-grid">
+                    <button onclick="loadDemoGraph(100, false, false)" class="btn btn-secondary btn-small">Простой</button>
+                    <button onclick="loadDemoGraph(100, true, false)" class="btn btn-secondary btn-small">Ориентированный</button>
+                    <button onclick="loadDemoGraph(100, false, true)" class="btn btn-secondary btn-small">Взвешенный</button>
+                    <button onclick="loadDemoGraph(100, true, true)" class="btn btn-secondary btn-small">Ориент. + Взвеш.</button>
+                </div>
+            </div>
+
+            <div class="upload-section" style="margin-top: 15px;">
+                <label for="graphFile" class="btn btn-outline" style="width: 100%; display: block; border: 2px dashed #cbd5e0; text-align: center; cursor: pointer;">
+                    <span id="uploadBtnText">📁 Загрузить свой JSON файл</span>
+                    <input type="file" id="graphFile" accept=".json" style="display: none;">
+                </label>
+                <details style="margin-top: 10px; font-size: 0.85em; color: #4a5568;">
+                    <summary style="cursor: pointer; font-weight: bold; color: #667eea;">
+                        Требования к формату JSON (Node-Link)
+                    </summary>
+                    <div style="background: #f7fafc; padding: 10px; border-radius: 6px; margin-top: 5px; border: 1px solid #e2e8f0;">
+                        <p>Приложение ожидает стандартный формат NetworkX:</p>
+                        <pre style="font-size: 0.8em; color: #2d3748;">
+{"directed": true, "nodes": [{"id": 1},{"id": 2}], "links": [{"source": 1, "target": 2, "weight": 0.5}]}
+                        </pre>
+                        <p><i>* Вес должен быть положительным числом (сила связи) от 0.1 до 1</i></p>
+                    </div>
+                </details>
+                <div id="fileLoader" style="display: none; text-align: center; margin-top: 10px;">
+                    <div class="spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                    <small>Обработка данных...</small>
+                </div>
+                <span id="fileName" class="file-name" style="display: block; text-align: center; margin-top: 5px; font-weight: bold;"></span>
+            </div>
+        </div>        
+
+        <div class="panel">
+            <h2>2. Параметры моделирования</h2>
+            <div class="form-row">
+                <div class="form-group flex-2">
+                    <label>Сценарии атаки (удаление узлов):</label>
+                    <div class="checkbox-group">
+                        <label title="Удаление узлов с наибольшим количеством связей">
+                            <input type="checkbox" name="scenario" value="degree" checked> По степени (Degree)
+                        </label>
+                        <label title="Параллельный расчет кратчайших путей">
+                            <input type="checkbox" name="scenario" value="betweenness" checked> По посредничеству (Betweenness)
+                        </label>
+                        <label title="Параллельный расчет близости узлов">
+                            <input type="checkbox" name="scenario" value="closeness" checked> По близости (Closeness)
+                        </label>
+                        <label title="Средний результат по нескольким итерациям">
+                            <input type="checkbox" name="scenario" value="random" checked> Случайные отказы
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group flex-1">
+                    <label for="steps">Всего шагов:</label>
+                    <input type="number" id="steps" value="10" min="1" max="100">
+                    
+                    <label for="nodesPerStep" style="margin-top:10px;">Узлов за шаг:</label>
+                    <input type="number" id="nodesPerStep" value="3" min="1" max="100">
+
+                    <div style="margin-top: 15px; padding: 8px; background: #fff5f5; border-radius: 6px; border: 1px solid #feb2b2;">
+                        <small style="color: #c53030; line-height: 1.2; display: block;">
+                            <b>Совет:</b> удаляйте в сумме 20-40% узлов для наглядного разрушения сети.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel actions" style="text-align: center;">
+            <button id="runBtn" class="btn btn-primary btn-large">Запустить анализ</button>
+            
+            <div id="progress" class="progress-container" style="display: none;">
+                <div class="spinner"></div>
+                <div class="progress-content">
+                    <p id="progressText">Распределение задач по потокам...</p>
+                    <div class="progress-bar-wrapper">
+                        <div id="progressBar" class="progress-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="results" class="results-panel" style="display:none;">
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Визуализация распада сети</h2>
+                    <div id="componentTypeBadge" class="badge">GCC/WCC</div>
+                </div>
+
+                <div id="animationControls">
+                    <select id="visScenarioSelect">
+                        <option value="degree">Сценарий: По степени</option>
+                        <option value="betweenness">Сценарий: По посредничеству</option>
+                        <option value="closeness">Сценарий: По близости</option>
+                        <option value="random">Сценарий: Случайная</option>
+                    </select>
+
+                    <div class="step-nav">
+                        <button id="btnPrevStep" class="btn btn-secondary btn-small">⬅ Назад</button>
+                        <span id="stepLabel">Шаг: 0</span>
+                        <button id="btnNextStep" class="btn btn-primary btn-small">Вперед ➡</button>
+                    </div>
+                </div>
+
+                <div id="cy"></div>
+                <p class="vis-hint">
+                    Ярким цветом выделена наибольшая компонента — <b>GCC</b> (для ориентированных — слабосвязная <b>WCC</b>).<br>
+                </p>
+            </div>
+
+            <div class="panel">
+                <h2>График деградации связности</h2>
+                <div class="canvas-container">
+                    <canvas id="gccChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
