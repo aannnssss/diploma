@@ -103,18 +103,18 @@ def run_analysis():
 
         report = aggregate_results(results)
 
-        speedup = t_seq / t_par if t_par > 0 else 1.0
-        p = (NUM_CORES * (speedup - 1)) / (speedup * (NUM_CORES - 1))
-
         print(f"ОТЧЕТ: граф {g.number_of_nodes()} узлов, Directed: {is_directed}, Weighted: {is_weighted}", flush=True)
         print(f"Сценарии: {', '.join(scenarios)}", flush=True)
+        print(f"Всего ядер на устройстве (TOTAL_CORES): {TOTAL_CORES}", flush=True)
+        print(f"Используется ядер для расчетов (NUM_CORES): {NUM_CORES}", flush=True)
 
         print(f"Паралл. время (t_par): {t_par:.3f} сек", flush=True)
         if BENCHMARK_MODE:
+            speedup = t_seq / t_par if t_par > 0 else 1.0
+            p = (NUM_CORES * (speedup - 1)) / (speedup * (NUM_CORES - 1))
             print(f"Послед. время (t_seq): {t_seq:.3f} сек", flush=True)
             print(f"Ускорение (Speedup):  {speedup:.2f}x", flush=True)
-
-        print(f"Доля паралл. работы (p):  {p:.2f}", flush=True)
+            print(f"Доля паралл. работы (p):  {p:.2f}", flush=True)
 
         return jsonify({
             'success': True,
