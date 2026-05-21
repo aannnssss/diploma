@@ -27,7 +27,7 @@ def _betw_chunk(g, is_weighted, nodes_chunk):
         weight=weight_attr
     )
 
-def select_nodes_by_betweenness(g, num_nodes, processes=6, is_weighted=False):
+def select_nodes_by_betweenness(g, num_nodes, processes, is_weighted=False):
     if len(g) <= num_nodes: return list(g.nodes())
     
     nodes = list(g.nodes())
@@ -55,7 +55,7 @@ def _clos_chunk(g, is_weighted, nodes_chunk):
         results[node] = nx.closeness_centrality(g, u=node, distance=weight_attr)
     return results
 
-def select_nodes_by_closeness(g, num_nodes, processes=6, is_weighted=False):
+def select_nodes_by_closeness(g, num_nodes, processes, is_weighted=False):
     if len(g) <= num_nodes: return list(g.nodes())
     
     nodes = list(g.nodes())
