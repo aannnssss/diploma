@@ -1,2 +1,1 @@
-docker compose up --build
-docker compose down
+Старостина АА 408
