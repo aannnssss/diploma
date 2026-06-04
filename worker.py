@@ -2,6 +2,7 @@ import networkx as nx
 import random 
 
 from utils import (
+    CTX,
     select_nodes_by_degree,
     select_nodes_by_betweenness,
     select_nodes_by_closeness,
@@ -25,6 +26,11 @@ def run_attack_task(edge_list, scenario, steps, nodes_per_step, seed, num_cores=
 
     rng = random.Random(seed)
 
+    pool = None
+
+    if scenario in ('betweenness', 'closeness') and num_cores > 1:
+        pool = CTX.Pool(processes=num_cores)
+
     if total_nodes > 0:
         comps = list(nx.weakly_connected_components(g)) if g.is_directed() else list(nx.connected_components(g))
         largest = max(comps, key=len) if comps else []
@@ -42,9 +48,9 @@ def run_attack_task(edge_list, scenario, steps, nodes_per_step, seed, num_cores=
         if scenario == 'degree':
             nodes_to_remove = select_nodes_by_degree(g, nodes_per_step, is_directed=is_directed, is_weighted=is_weighted)
         elif scenario == 'betweenness':
-            nodes_to_remove = select_nodes_by_betweenness(g, nodes_per_step, processes=num_cores, is_weighted=is_weighted)
+            nodes_to_remove = select_nodes_by_betweenness(g, nodes_per_step, pool, processes=num_cores, is_weighted=is_weighted)
         elif scenario == 'closeness':
-            nodes_to_remove = select_nodes_by_closeness(g, nodes_per_step, processes=num_cores, is_weighted=is_weighted)
+            nodes_to_remove = select_nodes_by_closeness(g, nodes_per_step, pool, processes=num_cores, is_weighted=is_weighted)
         elif scenario == 'random':
             nodes_to_remove = select_nodes_random(g, nodes_per_step, rng=rng)
         else:
@@ -63,6 +69,10 @@ def run_attack_task(edge_list, scenario, steps, nodes_per_step, seed, num_cores=
             current_gcc_rel = 0
             
         gcc_history.append(current_gcc_rel)
+
+    if pool is not None:
+        pool.close()
+        pool.join()
 
     return {
         'gcc_history': gcc_history,

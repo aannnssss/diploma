@@ -15,7 +15,7 @@ app = Flask(__name__)
 # false - только параллельный
 BENCHMARK_MODE = True  
 TOTAL_CORES = os.cpu_count() or 1
-NUM_CORES = max(1, TOTAL_CORES - 2)      
+NUM_CORES = max(1, TOTAL_CORES - 2)   
 DEFAULT_STEPS = 20
 DEFAULT_NODES_PER_STEP = 5
 
